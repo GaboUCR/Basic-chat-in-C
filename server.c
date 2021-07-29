@@ -11,7 +11,8 @@
 #define PORT 5000
 #define max_clients 50
 
-void safe_add(char *str, char *new_str, int *space)
+//str must have been allocated in the heap
+void safe_str_add(char *str, char *new_str, int *space)
 {
   int needed_space = strlen(str) +strlen(new_str)+1;
 
@@ -23,12 +24,22 @@ void safe_add(char *str, char *new_str, int *space)
 
   strcat(str, new_str);
 }
+//first must have been allocated in the heap
+void safe_int_array_add(int *first, int new_int, int*length, int*space)
+{
+  (*length)++;
 
-// char* safe_add(char *str, char *new_str, int *space)
-// {
+  if (*length +1 > *space)
+  {
+    first = (int *) realloc(first, (*space)*2*4);
+    *space = (*space)*2;
+  }
+
+  first[*length] = new_int;
+
+}
+
 //
-// }
-
 // void main(void){
 //   int clients[max_clients];
 //
@@ -91,15 +102,22 @@ void safe_add(char *str, char *new_str, int *space)
 //
 // }
 
-void main(){
-  // char s[] = realloc(NULL,15);
-  char *s = malloc(7);
-  strcpy(s,"perros");
-  char *t = "fsef";
-  int l = 7;
-  safe_add(s, t, &l);
-  // strcat(s,t);
-
-  printf("%s\n", s);
-
-}
+// void main(){
+//   char s[] = realloc(NULL,15);
+//   char *s = malloc(7);
+//   strcpy(s,"perros");
+//   char *t = "fsef";
+//   int l = 7;
+//   int *t = malloc(4*3);
+//   int len=-1, space=3;
+// 
+//   safe_int_array_add(t, 5, &len, &space);
+//   safe_int_array_add(t, 7, &len, &space);
+//   safe_int_array_add(t, 50, &len, &space);
+//   safe_int_array_add(t, 506, &len, &space);
+//
+//   printf("%d\n", t[0]);
+//   printf("%d\n", t[1]);
+//   printf("%d\n", t[2]);
+//   printf("%d\n", space);
+// }
