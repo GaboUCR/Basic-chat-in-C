@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #define PORT 5000
-#define max_clients 50
+#define max_clients 100
 
 //str must have been allocated in the heap
 void safe_str_add(char *str, char *new_str, int *space)
@@ -36,71 +36,141 @@ void safe_int_array_add(int *first, int new_int, int*length, int*space)
   }
 
   first[*length] = new_int;
-
+  printf("%d\n", first[0]);
 }
 
-//
-// void main(void){
-//   int clients[max_clients];
-//
-//   for (int i=0; i<max_clients; i++)
-//   {
-//
-//   }
-//   struct sockaddr_in address;
-//   int opt = 1;
-//   int addrlen = sizeof(address); //defined lower in the example
-//   char buffer[1024] = {0};
-//   int server_sock = socket(AF_INET, SOCK_STREAM, 0);
-//   //???? the example compared this value with 0
-//   if (server_sock == -1){
-//     perror("setsockopt");
-//     exit(EXIT_FAILURE);
-//   }
-//   //???? what does opt do? IN the example opt is a char*
-//   if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR,
-//                  &opt, sizeof(opt)))
-//   {
-//     perror("setsockopt");
-//     exit(EXIT_FAILURE);
-//   }
-//   address.sin_family = AF_INET;
-//   address.sin_addr.s_addr = INADDR_ANY;
-//   address.sin_port = htons(PORT);
-//   //???? haven't seen this struct notation before
-//   if (bind(server_sock, (struct sockaddr *)&address,
-//                          sizeof(address))<0)
-//   {
-//       perror("bind failed");
-//       exit(EXIT_FAILURE);
-//   }
-//
-//   if (listen(server_sock, 3) < 0)
-//   {
-//       perror("listen");
-//       exit(EXIT_FAILURE);
-//   }
-//
-//   while (1)
-//   {
-//
-//
-//   }
-//
-//   if (((clients[0] = accept(server_sock, (struct sockaddr *)&address,
-//                      (socklen_t*)&addrlen)))<0)
-//   {
-//       perror("accept");
-//       exit(EXIT_FAILURE);
-//   }
-//   char msg[]= "hello world patats";
-//   send(clients[0] , msg , strlen(msg) , 0 );
-//   printf("Hello message sent\n");
-//
-//
-//
-//
-// }
+void main(void){
+  // int *clients = malloc(4);
+  // int clients_count=0, clients_space=1;
+
+  int clients[max_clients];
+  char buffer[1025];
+
+  char *messages = malloc(9);
+  int str_space = 9;
+  strcpy(messages, "Welcome!");
+
+  fd_set connections;
+  int max_socket, i, activity, new_socket, sd;
+
+  for (i=0; i<max_clients; i++){
+    clients[i] = -1;
+  }
+
+  struct sockaddr_in address;
+  int opt = 1;
+  int addrlen = sizeof(address); //defined lower in the example
+  int server_sock = socket(AF_INET, SOCK_STREAM, 0);
+  //???? the example compared this value with 0
+  if (server_sock == -1){
+    perror("setsockopt");
+    exit(EXIT_FAILURE);
+  }
+  //???? what does opt do? IN the example opt is a char*
+  if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR,
+                 &opt, sizeof(opt)))
+  {
+    perror("setsockopt");
+    exit(EXIT_FAILURE);
+  }
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = INADDR_ANY;
+  address.sin_port = htons(PORT);
+
+  if (bind(server_sock, (struct sockaddr *)&address,
+                         sizeof(address))<0)
+  {
+      perror("bind failed");
+      exit(EXIT_FAILURE);
+  }
+  printf("Listener on port %d \n", PORT);
+
+  if (listen(server_sock, 3) < 0)
+  {
+      perror("listen");
+      exit(EXIT_FAILURE);
+  }
+  puts("Waiting for connections ...");
+
+  while (1)
+  {
+    FD_ZERO(&connections);
+    FD_SET(server_sock, &connections);
+    max_socket = server_sock;
+
+    for (i=0; i<max_clients; i++)
+    {
+      //????consider using sd here
+      // sd = clients[i]
+      if (clients[i] > -1)
+      {
+        FD_SET(clients[i], &connections);
+      }
+      // printf("%d\n", clients[i]);
+      if (clients[i] > max_socket)
+      {
+        max_socket = clients[i];
+      }
+    }
+    // printf("%d\n", max_socket);
+    activity = select( max_socket + 1 , &connections , NULL , NULL , NULL);
+    // printf("somethings\n");
+    //check for activity in the server Socket
+    if (FD_ISSET(server_sock, &connections))
+    {
+      if (((new_socket = accept(server_sock, (struct sockaddr *)&address,
+                         (socklen_t*)&addrlen)))<0)
+      {
+          perror("accept");
+          exit(EXIT_FAILURE);
+      }
+      printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+
+      if(send(new_socket, messages, strlen(messages), 0) != strlen(messages) )
+      {
+        perror("send");
+      }
+      for (i=0; i<max_clients; i++)
+      {
+        if (clients[i] == -1)
+        {
+          clients[i] = new_socket;
+          break;
+        }
+        else
+        {
+          printf("available sockets %d\n", clients[i]);
+        }
+      }
+
+      // safe_int_array_add(clients, new_socket, &clients_count, &clients_space);
+      // printf("new socket %d\n", );
+    }
+    else
+    {
+      for(i=0; i<max_clients; i++)
+      {
+        if (FD_SET(clients[i], &connections))
+        {
+          read(clients[i], buffer, 1024);
+          if (strcmp(buffer, "close") == 0)
+          {
+            getpeername(clients[i] , (struct sockaddr*)&address , \
+            (socklen_t*)&addrlen);
+            printf("Host disconnected , ip %s , port %d \n" , \
+            inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+
+            close(clients[i]);
+            clients[i] = -1;
+            strcpy(buffer,"");
+          }
+
+        }
+      }
+    }
+
+  }
+}
 
 // void main(){
 //   char s[] = realloc(NULL,15);
@@ -110,7 +180,7 @@ void safe_int_array_add(int *first, int new_int, int*length, int*space)
 //   int l = 7;
 //   int *t = malloc(4*3);
 //   int len=-1, space=3;
-// 
+//
 //   safe_int_array_add(t, 5, &len, &space);
 //   safe_int_array_add(t, 7, &len, &space);
 //   safe_int_array_add(t, 50, &len, &space);

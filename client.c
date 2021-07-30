@@ -31,7 +31,12 @@ int main(void){
       printf("\nConnection Failed \n");
       return -1;
   }
+  send(sock , "hello" , 6 , 0 );
+  char msg[1024];
+
   valread = read(sock , buffer, 1024);
   printf("%s\n",buffer);
+
+  send(sock, "close", 6, 0);
     // return 0;
   }
