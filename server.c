@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #define PORT 5000
 #define max_clients 100
+#define buffer_size 10
 
 //str must have been allocated in the heap
 void safe_str_add(char *str, char *new_str, int *space)
@@ -44,14 +45,15 @@ void main(void){
   // int clients_count=0, clients_space=1;
 
   int clients[max_clients];
-  char buffer[1025];
+  char buffer[buffer_size];
 
   char *messages = malloc(9);
   int str_space = 9;
   strcpy(messages, "Welcome!");
+  safe_str_add(messages, " hola yo me llamo juan miguel mora rosas instructor de como jugar", &str_space);
 
   fd_set connections;
-  int max_socket, i, activity, new_socket, sd;
+  int max_socket, i, activity, new_socket, chunks;
 
   for (i=0; i<max_clients; i++){
     clients[i] = -1;
@@ -59,7 +61,7 @@ void main(void){
 
   struct sockaddr_in address;
   int opt = 1;
-  int addrlen = sizeof(address); //defined lower in the example
+  int addrlen = sizeof(address);
   int server_sock = socket(AF_INET, SOCK_STREAM, 0);
   //???? the example compared this value with 0
   if (server_sock == -1){
@@ -100,13 +102,10 @@ void main(void){
 
     for (i=0; i<max_clients; i++)
     {
-      //????consider using sd here
-      // sd = clients[i]
       if (clients[i] > -1)
       {
         FD_SET(clients[i], &connections);
       }
-      // printf("%d\n", clients[i]);
       if (clients[i] > max_socket)
       {
         max_socket = clients[i];
@@ -125,11 +124,18 @@ void main(void){
           exit(EXIT_FAILURE);
       }
       printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
+      chunks = strlen(messages)/buffer_size + (strlen(messages)%buffer_size !=0);
 
-      if(send(new_socket, messages, strlen(messages), 0) != strlen(messages) )
+      for (i=0; i < chunks; i++)
       {
-        perror("send");
+        printf("we are here\n");
+        if(send(new_socket, messages+i*buffer_size, buffer_size, 0) != buffer_size )
+        {
+          perror("send");
+        }
       }
+      send(new_socket, "end", 4, 0);
+
       for (i=0; i<max_clients; i++)
       {
         if (clients[i] == -1)
@@ -142,17 +148,17 @@ void main(void){
           printf("available sockets %d\n", clients[i]);
         }
       }
-
-      // safe_int_array_add(clients, new_socket, &clients_count, &clients_space);
-      // printf("new socket %d\n", );
     }
     else
     {
       for(i=0; i<max_clients; i++)
       {
-        if (FD_SET(clients[i], &connections))
+
+        if (FD_ISSET(clients[i], &connections))
         {
-          read(clients[i], buffer, 1024);
+          printf("%d\n", clients[i]);
+          read(clients[i], buffer, buffer_size);
+          printf("%s\n", buffer);
           if (strcmp(buffer, "close") == 0)
           {
             getpeername(clients[i] , (struct sockaddr*)&address , \
@@ -162,7 +168,6 @@ void main(void){
 
             close(clients[i]);
             clients[i] = -1;
-            strcpy(buffer,"");
           }
 
         }
