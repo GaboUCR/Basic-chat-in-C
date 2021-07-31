@@ -13,6 +13,20 @@
 #define PORT 5000
 #define buffer_size 1025
 
+void receive_msg(int fd_sock, char* buffer)
+{
+  while (1)
+  {
+    read(fd_sock , buffer, buffer_size);
+    if (strcmp(buffer, "end") == 0)
+    {
+      break;
+    }
+    // printf("%d\n", valread);
+    printf("%s", buffer);
+  }
+}
+
 int main(void)
 {
   int sock=0, valread, activity;
@@ -29,11 +43,9 @@ int main(void)
     printf("\n Socket creation error \n");
     return -1;
   }
-  // printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , sock , inet_ntoa(serv_addr.sin_addr) , ntohs(serv_addr.sin_port));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(PORT);
-  // printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , sock , inet_ntoa(serv_addr.sin_addr) , ntohs(serv_addr.sin_port));
-  // Convert IPv4 and IPv6 addresses from text to binary form
+
   if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)
   {
       printf("\nInvalid address/ Address not supported \n");
@@ -46,28 +58,24 @@ int main(void)
       return -1;
   }
   // send(sock , "hello" , 6 , 0 );
-  char msg[buffer_size];
+  char msg[buffer_size+1];
   //ask for all of the messages
-  while (1)
-  {
-    read(sock , buffer, buffer_size);
-    if (strcmp(buffer, "end") == 0)
-    {
-      break;
-    }
-    // printf("%d\n", valread);
-    printf("%s", buffer);
-  }
+  receive_msg(sock, buffer);
 
-  // while(1)
-  // {
-  //   // printf("Press a key to write a message, if you're writing you cannot receive messages, you will receive them when you're done writing\n");
-  //   // FD_ZERO(&connections);
-  //   // FD_SET(sock, &connections);
-  //   // activity = select(sock + 1 ,NULL ,  &connections , NULL , NULL);
-  //   read(sock , buffer, buffer_size);
-  //   printf("%s\n", buffer);
-  // }
+  char in[3];
+  while(1)
+  {
+    printf("\nPress r to receive any new message, press w to write a message, you will not receive messages will you write. Press c to close");
+    fgets(in, 3, stdin);
+
+    if (strcmp(in, "r") == 0)
+    {
+      read(sock , buffer, buffer_size);
+      printf("%s\n", buffer);
+
+    }
+
+  }
   // send(sock , "loknhg", 7, 0);
 
   read(sock , buffer, buffer_size);

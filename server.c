@@ -12,11 +12,14 @@
 #define max_clients 100
 #define buffer_size 1025
 
+//here the file descriptor of each client will be saved and the messages that
+//this client has not receive
 struct client
 {
   int fd;
   char *msgs;
 };
+
 //str must have been allocated in the heap
 void safe_str_add(char *str, char *new_str, int *space)
 {
@@ -45,12 +48,24 @@ void safe_int_array_add(int *first, int new_int, int*length, int*space)
   printf("%d\n", first[0]);
 }
 
+void send_message(int fd_sock, char*messages, int chunks)
+{
+  for (int i=0; i < chunks; i++)
+  {
+    if(send(fd_sock, messages+i*buffer_size, buffer_size, 0) != buffer_size )
+    {
+      perror("send");
+    }
+  }
+  send(fd_sock, "end", 4, 0);
+}
+
 void main(void){
   // int *clients = malloc(4);
   // int clients_count=0, clients_space=1;
 
-  int clients[max_clients];
-  char buffer[buffer_size];
+  struct client clients[max_clients];
+  char buffer[buffer_size+1];
 
   char *messages = malloc(9);
   int str_space = 9;
@@ -61,7 +76,7 @@ void main(void){
   int max_socket, i, activity, new_socket, chunks;
 
   for (i=0; i<max_clients; i++){
-    clients[i] = -1;
+    clients[i].fd = -1;
   }
 
   struct sockaddr_in address;
@@ -107,13 +122,13 @@ void main(void){
 
     for (i=0; i<max_clients; i++)
     {
-      if (clients[i] > -1)
+      if (clients[i].fd > -1)
       {
-        FD_SET(clients[i], &connections);
+        FD_SET(clients[i].fd, &connections);
       }
-      if (clients[i] > max_socket)
+      if (clients[i].fd > max_socket)
       {
-        max_socket = clients[i];
+        max_socket = clients[i].fd;
       }
     }
     // printf("%d\n", max_socket);
@@ -130,26 +145,26 @@ void main(void){
       }
       printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
       chunks = strlen(messages)/buffer_size + (strlen(messages)%buffer_size !=0);
-
-      for (i=0; i < chunks; i++)
-      {
-        if(send(new_socket, messages+i*buffer_size, buffer_size, 0) != buffer_size )
-        {
-          perror("send");
-        }
-      }
-      send(new_socket, "end", 4, 0);
+      send_message(new_socket, messages, chunks);
+      // for (i=0; i < chunks; i++)
+      // {
+      //   if(send(new_socket, messages+i*buffer_size, buffer_size, 0) != buffer_size )
+      //   {
+      //     perror("send");
+      //   }
+      // }
+      // send(new_socket, "end", 4, 0);
 
       for (i=0; i<max_clients; i++)
       {
-        if (clients[i] == -1)
+        if (clients[i].fd == -1)
         {
-          clients[i] = new_socket;
+          clients[i].fd = new_socket;
           break;
         }
         // else
         // {
-        //   printf("available sockets %d\n", clients[i]);
+        //   printf("available sockets %d\n", clients[i].fd);
         // }
       }
     }
@@ -158,22 +173,22 @@ void main(void){
       for(i=0; i<max_clients; i++)
       {
 
-        if (FD_ISSET(clients[i], &connections))
+        if (FD_ISSET(clients[i].fd, &connections))
         {
-          send(clients[i], "loknhg", 7, 0);
+          send(clients[i].fd, "loknhg", 7, 0);
 
-          printf("%d\n", clients[i]);
-          read(clients[i], buffer, buffer_size);
+          printf("%d\n", clients[i].fd);
+          read(clients[i].fd, buffer, buffer_size);
           printf("%s\n", buffer);
           if (strcmp(buffer, "close") == 0)
           {
-            getpeername(clients[i] , (struct sockaddr*)&address , \
+            getpeername(clients[i].fd, (struct sockaddr*)&address , \
             (socklen_t*)&addrlen);
             printf("Host disconnected , ip %s , port %d \n" , \
             inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
 
-            close(clients[i]);
-            clients[i] = -1;
+            close(clients[i].fd);
+            clients[i].fd = -1;
           }
 
         }
