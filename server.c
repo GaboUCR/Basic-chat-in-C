@@ -10,8 +10,13 @@
 #include <sys/time.h>
 #define PORT 5000
 #define max_clients 100
-#define buffer_size 10
+#define buffer_size 1025
 
+struct client
+{
+  int fd;
+  char *msgs;
+};
 //str must have been allocated in the heap
 void safe_str_add(char *str, char *new_str, int *space)
 {
@@ -112,7 +117,7 @@ void main(void){
       }
     }
     // printf("%d\n", max_socket);
-    activity = select( max_socket + 1 , &connections , NULL , NULL , NULL);
+    activity = select(max_socket + 1 , &connections , &connections , NULL , NULL);
     // printf("somethings\n");
     //check for activity in the server Socket
     if (FD_ISSET(server_sock, &connections))
@@ -128,7 +133,6 @@ void main(void){
 
       for (i=0; i < chunks; i++)
       {
-        printf("we are here\n");
         if(send(new_socket, messages+i*buffer_size, buffer_size, 0) != buffer_size )
         {
           perror("send");
@@ -143,10 +147,10 @@ void main(void){
           clients[i] = new_socket;
           break;
         }
-        else
-        {
-          printf("available sockets %d\n", clients[i]);
-        }
+        // else
+        // {
+        //   printf("available sockets %d\n", clients[i]);
+        // }
       }
     }
     else
@@ -156,6 +160,8 @@ void main(void){
 
         if (FD_ISSET(clients[i], &connections))
         {
+          send(clients[i], "loknhg", 7, 0);
+
           printf("%d\n", clients[i]);
           read(clients[i], buffer, buffer_size);
           printf("%s\n", buffer);
