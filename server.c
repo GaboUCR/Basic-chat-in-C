@@ -67,12 +67,13 @@ void main(void){
   struct client clients[max_clients];
   char buffer[buffer_size+1];
 
-  char *messages = malloc(9);
-  int str_space = 9;
-  strcpy(messages, "Welcome!");
-  safe_str_add(messages, " hola yo me llamo juan miguel mora rosas instructor de como jugar", &str_space);
+  char *messages = malloc(11);
+  int str_space = 11;
+  strcpy(messages, "Welcome!\n");
 
+  struct timeval time = {.tv_sec=0, .tv_usec=0};
   fd_set connections;
+  fd_set w_connections;
   int max_socket, i, activity, new_socket, chunks;
 
   for (i=0; i<max_clients; i++){
@@ -118,6 +119,8 @@ void main(void){
   {
     FD_ZERO(&connections);
     FD_SET(server_sock, &connections);
+    FD_ZERO(&w_connections);
+    FD_SET(server_sock, &w_connections);
     max_socket = server_sock;
 
     for (i=0; i<max_clients; i++)
@@ -125,6 +128,7 @@ void main(void){
       if (clients[i].fd > -1)
       {
         FD_SET(clients[i].fd, &connections);
+        FD_SET(clients[i].fd, &w_connections);
       }
       if (clients[i].fd > max_socket)
       {
@@ -132,10 +136,11 @@ void main(void){
       }
     }
     // printf("%d\n", max_socket);
-    activity = select(max_socket + 1 , &connections , &connections , NULL , NULL);
+    // printf("max socket %d\n", max_socket);
+    activity = select(max_socket + 1 , &connections , &w_connections , NULL , &time);
     // printf("somethings\n");
     //check for activity in the server Socket
-    if (FD_ISSET(server_sock, &connections))
+    if (FD_ISSET(server_sock, &connections) || FD_ISSET(server_sock, &w_connections))
     {
       if (((new_socket = accept(server_sock, (struct sockaddr *)&address,
                          (socklen_t*)&addrlen)))<0)
@@ -146,14 +151,6 @@ void main(void){
       printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port));
       chunks = strlen(messages)/buffer_size + (strlen(messages)%buffer_size !=0);
       send_message(new_socket, messages, chunks);
-      // for (i=0; i < chunks; i++)
-      // {
-      //   if(send(new_socket, messages+i*buffer_size, buffer_size, 0) != buffer_size )
-      //   {
-      //     perror("send");
-      //   }
-      // }
-      // send(new_socket, "end", 4, 0);
 
       for (i=0; i<max_clients; i++)
       {
@@ -172,12 +169,15 @@ void main(void){
     {
       for(i=0; i<max_clients; i++)
       {
-
+        // if (FD_ISSET(clients[i].fd, &w_connections))
+        // {
+        //   printf("listening to %d\n", clients[i].fd);
+        //   read(clients[i].fd, buffer, buffer_size);
+        //   printf("ends listening to %d\n", clients[i].fd);
+        //   printf("%s\n", buffer);
+        // }
         if (FD_ISSET(clients[i].fd, &connections))
         {
-          send(clients[i].fd, "loknhg", 7, 0);
-
-          printf("%d\n", clients[i].fd);
           read(clients[i].fd, buffer, buffer_size);
           printf("%s\n", buffer);
           if (strcmp(buffer, "close") == 0)

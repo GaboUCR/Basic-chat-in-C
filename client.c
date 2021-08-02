@@ -22,7 +22,6 @@ void receive_msg(int fd_sock, char* buffer)
     {
       break;
     }
-    // printf("%d\n", valread);
     printf("%s", buffer);
   }
 }
@@ -34,9 +33,16 @@ int main(void)
   char buffer[buffer_size+1];
   fd_set connections;
 
-  char username[18];
-  printf("What username do you want? It must 17  characters or less");
-  fgets(username, 18, stdin);
+  char username[20];
+  char placeholder[18];
+
+  printf("What username do you want? It must 17  characters or less, more than that will cause an error\n");
+  fgets(placeholder, 18, stdin);
+  while ((getchar()) != '\n');
+
+  memmove(username, placeholder, strlen(placeholder)-1);
+  strcat(username, ": ");
+
 
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
   {
@@ -57,29 +63,43 @@ int main(void)
       printf("\nConnection Failed \n");
       return -1;
   }
-  // send(sock , "hello" , 6 , 0 );
-  char msg[buffer_size+1];
   //ask for all of the messages
   receive_msg(sock, buffer);
 
-  char in[3];
+  char msg[buffer_size+1];
+  char text[buffer_size+1-strlen(username)];
+  strcpy(msg, username);
+  char in[2];
+  printf("%s", msg);
   while(1)
   {
     printf("\nPress r to receive any new message, press w to write a message, you will not receive messages will you write. Press c to close");
-    fgets(in, 3, stdin);
+    scanf("%s", in);
+    while ((getchar()) != '\n');
 
     if (strcmp(in, "r") == 0)
     {
-      read(sock , buffer, buffer_size);
-      printf("%s\n", buffer);
-
+      printf("het\n");
+      receive_msg(sock, buffer);
     }
+    if (strcmp(in, "w") == 0)
+    {
+      // scanf("%s\n", text);
+      fgets(text, buffer_size+1-strlen(username), stdin);
+      while ((getchar()) != '\n');
+      strcat(msg, text);
+
+      printf("%s\n", msg);
+      send(sock, msg, buffer_size, 0);
+      strcpy(msg, username);
+    }
+    if (strcmp(in, "c") == 0)
+    {
+      break;
+    }
+    strcpy(in, "");
 
   }
-  // send(sock , "loknhg", 7, 0);
-
-  read(sock , buffer, buffer_size);
-  printf("%s\n", buffer);
   send(sock, "close", 6, 0);
-    // return 0;
+  return 0;
 }
